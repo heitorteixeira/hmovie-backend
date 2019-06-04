@@ -42,12 +42,20 @@ public class MovieService {
     @Value("${api.url.movie.upcoming}")
     private String apiUrlMovieUpcoming;
 
+    @Value("${api.url.movie.genre}")
+    private String apiUrlMovieGenre;
+
+    @Value("${api.url.search.movie}")
+    private String apiUrlSearchMovie;
+
     @Value("${api.language}")
     private String apiLanguage;
 
+    private Map<Integer, String> genres = new HashMap<Integer, String>();
+
     public List<MovieDTO> findAllUpcoming(Integer page) {
         try {
-            
+            findAllGenres();
             ObjectMapper mapper = new ObjectMapper();
             RestTemplate restTemplate = new RestTemplate();
 
@@ -55,6 +63,7 @@ public class MovieService {
 
             if (responseMovies.getStatusCode().value() >= 200 && responseMovies.getStatusCode().value() < 300) {
                 ResultsDTO result = mapper.readValue(responseMovies.getBody(), ResultsDTO.class);
+                setGenreIntoMovies(result);
                 return result.getResults();
             } else {
                 throw new HmovieException("Error when access ThemovieDb API: " + responseMovies.getStatusCode().getReasonPhrase());
@@ -63,6 +72,83 @@ public class MovieService {
             LOG.info(e.getMessage());
             throw new HmovieException(e.getMessage());
         }
+    }
+
+    private void setGenreIntoMovies(ResultsDTO result) {
+        for (MovieDTO movie : result.getResults()) {
+            List<GenreDTO> lstGenres = new ArrayList<GenreDTO>();
+            for (Integer idGenre : movie.getGenreIds()) {
+                GenreDTO gDB = new GenreDTO(idGenre, genres.get(idGenre));
+                if (gDB != null) {
+                    lstGenres.add(gDB);
+                }
+            }
+            movie.setGenres(lstGenres);
+        }
+    }
+
+    private void findAllGenres() {
+        try {
+            if (genres.isEmpty()) {
+                ObjectMapper mapper = new ObjectMapper();
+                RestTemplate restTemplate = new RestTemplate();
+
+                ResponseEntity<String> response = restTemplate.getForEntity(getUrlGenres(), String.class);
+
+                if (response.getStatusCode().value() >= 200 && response.getStatusCode().value() < 300) {
+                    GenresDTO result = mapper.readValue(response.getBody(), GenresDTO.class);
+                    for (GenreDTO g : result.getGenres()) {
+                        genres.put(g.getId(), g.getName());
+                    }
+                } else {
+                    throw new HmovieException("Error when access ThemovieDb API: " + response.getStatusCode().getReasonPhrase());
+                }
+            }
+        } catch (IOException e) {
+            LOG.info(e.getMessage());
+            throw new HmovieException(e.getMessage());
+        }
+    }
+
+    public List<MovieDTO> searchMovies(SearchMovieDTO requestDto) {
+        try {
+            findAllGenres();
+            ObjectMapper mapper = new ObjectMapper();
+            RestTemplate restTemplate = new RestTemplate();
+
+            ResponseEntity<String> responseMovies = restTemplate.getForEntity(getUrlSearchMovies(requestDto), String.class);
+
+            if (responseMovies.getStatusCode().value() >= 200 && responseMovies.getStatusCode().value() < 300) {
+                ResultsDTO result = mapper.readValue(responseMovies.getBody(), ResultsDTO.class);
+                setGenreIntoMovies(result);
+                return result.getResults();
+
+            } else {
+                throw new HmovieException("Error when access ThemovieDb API: " + responseMovies.getStatusCode().getReasonPhrase());
+            }
+        } catch (IOException e) {
+            LOG.info(e.getMessage());
+            throw new HmovieException(e.getMessage());
+        }
+    }
+
+    private String getUrlSearchMovies(SearchMovieDTO requestDto) {
+        String url = apiUrl + apiUrlSearchMovie + "?" + "api_key=" + apiKey;
+
+        url = apiLanguage != null ? url + "&language=" + apiLanguage : url;
+        url = requestDto.getQuery() != null ? url + "&query=" + requestDto.getQuery() : url;
+        url = requestDto.getPage() != null ? url + "&page=" + requestDto.getPage() : url;
+        url = requestDto.getIncludeAdult() != null ? url + "&include_adult=" + requestDto.getIncludeAdult() : url;
+
+        return url;
+    }
+
+    private String getUrlGenres() {
+        String url = apiUrl + apiUrlMovieGenre + "?" + "api_key=" + apiKey;
+
+        url = apiLanguage != null ? url + "&language=" + apiLanguage : url;
+
+        return url;
     }
 
     private String getUrlUpcomingMovies(Integer page) {
