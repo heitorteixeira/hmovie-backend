@@ -51,6 +51,10 @@ public class MovieService {
     @Value("${api.language}")
     private String apiLanguage;
 
+    @Value("${api.url.images}")
+    private String apiUrlImages;
+
+    private Map<String, InputStream> images = new HashMap<String, InputStream>();
     private Map<Integer, String> genres = new HashMap<Integer, String>();
 
     public List<MovieDTO> findAllUpcoming(Integer page) {
@@ -64,6 +68,7 @@ public class MovieService {
             if (responseMovies.getStatusCode().value() >= 200 && responseMovies.getStatusCode().value() < 300) {
                 ResultsDTO result = mapper.readValue(responseMovies.getBody(), ResultsDTO.class);
                 setGenreIntoMovies(result);
+                findImages(result.getResults());
                 return result.getResults();
             } else {
                 throw new HmovieException("Error when access ThemovieDb API: " + responseMovies.getStatusCode().getReasonPhrase());
@@ -121,10 +126,49 @@ public class MovieService {
             if (responseMovies.getStatusCode().value() >= 200 && responseMovies.getStatusCode().value() < 300) {
                 ResultsDTO result = mapper.readValue(responseMovies.getBody(), ResultsDTO.class);
                 setGenreIntoMovies(result);
+                findImages(result.getResults());
                 return result.getResults();
 
             } else {
                 throw new HmovieException("Error when access ThemovieDb API: " + responseMovies.getStatusCode().getReasonPhrase());
+            }
+        } catch (IOException e) {
+            LOG.info(e.getMessage());
+            throw new HmovieException(e.getMessage());
+        }
+    }
+
+    private void findImages(List<MovieDTO> movies) {
+        try {
+            for (MovieDTO m : movies) {
+                if (m.getPosterPath() != null) {
+                    String path = m.getPosterPath().substring(1);
+                    URL urlInput = new URL(apiUrlImages + path);
+                    InputStream is = urlInput.openStream();
+
+                    if (!images.containsKey(path)) {
+                        images.put(path, is);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LOG.info(e.getMessage());
+            throw new HmovieException(e.getMessage());
+        }
+
+    }
+
+    public void getImage(String posterPath, HttpServletResponse response) {
+        try {
+            if (images.containsKey(posterPath)) {
+                InputStream is = images.get(posterPath);
+                if (is != null) {
+                    response.setContentType(MediaType.IMAGE_JPEG_VALUE);
+                    StreamUtils.copy(is, response.getOutputStream());
+                }
+            } else {
+                System.out.println(posterPath);
+                LOG.info("Not find image: " + posterPath);
             }
         } catch (IOException e) {
             LOG.info(e.getMessage());
