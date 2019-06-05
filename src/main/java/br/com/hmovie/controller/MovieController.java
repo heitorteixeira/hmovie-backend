@@ -30,13 +30,11 @@ public class MovieController {
         return movieService.findAllUpcoming(page);
     }
 
-    @CrossOrigin(origins = "http://localhost:4200")
     @RequestMapping(value = "/search", method = RequestMethod.POST)
     public List<MovieDTO> searchMovies(@RequestBody SearchMovieDTO dto) {
         return movieService.searchMovies(dto);
     }
     
-    @CrossOrigin(origins = "http://localhost:4200")
     @RequestMapping(value = "/sid/{posterPath}", method = RequestMethod.GET, produces = MediaType.IMAGE_JPEG_VALUE)
     public void getImage(HttpServletResponse response, @PathVariable String posterPath) throws IOException {
         movieService.getImage(posterPath, response);
