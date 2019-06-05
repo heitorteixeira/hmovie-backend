@@ -1,6 +1,3 @@
 # hmovie-backend
 
-This app use Angular 7 whith:
--ngx-infinite-scroll 
--bootstrap
--jquery
+This app use Java 8 with SpringBoot
