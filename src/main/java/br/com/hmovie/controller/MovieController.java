@@ -25,7 +25,6 @@ public class MovieController {
     @Autowired
     private MovieService movieService;
 
-    @CrossOrigin(origins = "http://localhost:4200")
     @RequestMapping(value = "/{page}", method = RequestMethod.GET)
     public List<MovieDTO> findAllUpcoming(@PathVariable Integer page) {
         return movieService.findAllUpcoming(page);
